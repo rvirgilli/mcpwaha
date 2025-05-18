@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "waha-whatsapp-server": {
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "/caminho/para/seu/projeto/waha_mcp_server.py"
+      ]
+    }
+  }
+} 
