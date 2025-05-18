@@ -75,29 +75,3 @@ uv run python waha_mcp_server.py
   ```
   Envie "Bom dia" para João.
   ```
-
-## Exemplo de chamada direta via HTTP
-
-```python
-import httpx
-
-url = "http://localhost:3000/api/sendText"
-payload = {
-    "chatId": "5511999999999@c.us",
-    "text": "Teste",
-    "session": "default"
-}
-resp = httpx.post(url, json=payload)
-print(resp.json())
-```
-
-## Observações
-
-- Números devem iniciar com `+` e incluir código do país.
-- Em caso de falha, verifique se o WAHA está rodando e autenticado.
-- O resource `contacts_list` retorna um dicionário `{nome: número}`.
-
-## Entregável
-
-- Repositório Git com o código do servidor MCP.
-- Relatório básico de uso com captura de tela demonstrando o envio de mensagem via MCP.
