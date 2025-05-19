@@ -1,6 +1,8 @@
 # Servidor MCP WAHA WhatsApp
 
-Este projeto implementa um servidor MCP para envio de mensagens via WhatsApp utilizando o WAHA (WhatsApp HTTP API).
+**Disciplina:** CCO0464 - TÓPICOS ESPECIAIS EM SISTEMAS INTELIGENTES E APLICAÇÕES 1 (2025.1 - TA)
+
+Este projeto foi desenvolvido como atividade da disciplina CCO0464, com o objetivo de implementar e demonstrar o uso de um servidor MCP para integração com o WhatsApp via WAHA.
 
 ## Funcionalidades
 
@@ -94,8 +96,23 @@ print(resp.json())
 ## Observações
 
 - Números devem iniciar com `+` e incluir código do país.
-- Em caso de falha, verifique se o WAHA está rodando e autenticado.
 - O resource `contacts_list` retorna um dicionário `{nome: número}`.
+
+## Testes de MCP Resources
+
+Para validar o recurso `contacts_list`, foram realizados testes no Claude Desktop e no Cursor:
+
+- **Claude Desktop**: o recurso `contacts://list` foi anexado à conversa, permitindo que o modelo leia o JSON de contatos:
+  ![Consulta ao recurso no Claude](images/proof_claude_busca_executada.png)
+  ![Anexando recurso no Claude](images/proof_claude_attachment_from_mcp_server.png)
+
+- **Cursor**: não há suporte a MCP resources; apenas as ferramentas estão disponíveis ao modelo, conforme capturado abaixo:
+  ![Cursor sem suporte a resources](images/proof_cursor_without_resources.png)
+  
+  > Documentação oficial: [Model Context Protocol - MCP Resources](https://docs.cursor.com/context/model-context-protocol#mcp-resources)
+
+Por fim, a ferramenta **send_whatsapp** foi testada enviando uma mensagem de confirmação para um contato, conforme evidenciado no WhatsApp:
+  ![Mensagem no WhatsApp](images/proof_whatsapp.png)
 
 ## Entregável
 

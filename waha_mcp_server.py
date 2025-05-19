@@ -1,63 +1,94 @@
+import json
+import inspect
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-# Inicializa o servidor MCP
-mcp = FastMCP("WAHA")
+"""WAHA WhatsApp MCP server
+---------------------------------
+* Registra o recurso **contacts://list** (JSON com nome → número).
+* O LLM deve ler esse recurso e passar **phone_number** já em formato "+<E.164>" na chamada da tool.
+* A tool **send_whatsapp** não faz mapeamento de nomes — valida apenas o formato e envia via WAHA.
+"""
 
-# Configurações do WAHA (URL da API e nome da sessão)
-WAHA_API_URL = "http://localhost:3000"
+# ────────────────────────────────────────────────────────────────────────────────
+# 1. Inicialização
+# ────────────────────────────────────────────────────────────────────────────────
+
+mcp = FastMCP(
+    server_name="WAHA-WhatsApp",
+    version="0.3.0",
+)
+
+# ────────────────────────────────────────────────────────────────────────────────
+# 2. Contatos
+# ────────────────────────────────────────────────────────────────────────────────
+
+CONTACTS: dict[str, str] = {
+    "Rafaello": "+5562992930437",
+    "Lucas":    "+556291324281",
+}
+
+# ────────────────────────────────────────────────────────────────────────────────
+# 3. Resource de contatos
+# ────────────────────────────────────────────────────────────────────────────────
+
+@mcp.resource(
+    uri="contacts://list",
+    name="Lista de Contatos",
+    description="JSON de nome → número internacional (+<código‑país><DDD><número>)",
+    mime_type="application/json",
+)
+async def contacts_list() -> dict[str, str]:
+    """Retorna o dicionário de contatos em JSON."""
+    return CONTACTS
+
+# ────────────────────────────────────────────────────────────────────────────────
+# 4. Tool de envio WhatsApp via WAHA
+# ────────────────────────────────────────────────────────────────────────────────
+
+WAHA_API_URL      = "http://localhost:3000"
 WAHA_SESSION_NAME = "default"
 
 @mcp.tool()
 async def send_whatsapp(phone_number: str, message: str) -> str:
-    """
-    Envia mensagem para um número internacional via WAHA.
-    """
-    if not phone_number.startswith("+" ):
-        return "Erro: número deve iniciar com '+'."
+    """Envia mensagem via WAHA.
 
-    # Converte número para chatId do WAHA
-    chat_id = f"{phone_number[1:]}@c.us"
+    Args:
+        phone_number: Número internacional no formato +⟨código‑país⟩⟨DDD⟩⟨número⟩.
+        message: Texto a ser enviado.
+    """
+    # 1) valida formato internacional
+    if not phone_number.startswith("+"):
+        return (
+            "Erro: número deve iniciar com '+' e estar no formato internacional "
+            "(ex: +5511998765432)."
+        )
+
+    # 2) monta payload WAHA
     payload = {
-        "chatId": chat_id,
-        "reply_to": None,
+        "chatId": f"{phone_number[1:]}@c.us",
         "text": message,
-        "linkPreview": True,
-        "linkPreviewHighQuality": False,
         "session": WAHA_SESSION_NAME,
     }
 
+    # 3) chama WAHA REST
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{WAHA_API_URL}/api/sendText",
-                json=payload,
-                headers={"Content-Type": "application/json"},
-                timeout=30.0,
-            )
-            response.raise_for_status()
-            data = response.json()
-            if data.get("status") == "success" or data.get("id"):
-                msg_id = data.get("id", "N/A")
-                return f"Mensagem enviada para {phone_number} (id: {msg_id})."
-            return f"Falha ao enviar. Resposta WAHA: {data}"
-
-    except httpx.HTTPStatusError as exc:
-        return f"Erro HTTP WAHA: {exc.response.status_code} - {exc.response.text}"
-    except httpx.RequestError as exc:
-        return f"Erro de requisição WAHA: {exc}"
+            r = await client.post(f"{WAHA_API_URL}/api/sendText", json=payload, timeout=30)
+            r.raise_for_status()
+            data = r.json()
     except Exception as exc:
-        return f"Erro inesperado: {type(exc).__name__} - {exc}"
+        return f"Erro enviando WAHA: {exc!r}"
 
-# Resource com contatos pré-definidos ({nome: número})
-@mcp.resource()
-async def contacts_list() -> dict[str, str]:
-    return {
-        "João": "+5511999999999",
-        "Maria": "+5511988888888",
-        "Carlos": "+5511977777777",
-    }
+    # 4) analisa resposta
+    if data.get("status") == "success" or data.get("id"):
+        return f"✅ Mensagem enviada para {phone_number} (id: {data.get('id', 'N/A')})"
+    return f"Falha WAHA: {json.dumps(data, ensure_ascii=False)}"
+
+# ────────────────────────────────────────────────────────────────────────────────
+# 5. Execução do servidor
+# ────────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print("Iniciando servidor MCP WAHA (stdio)...")
-    mcp.run(transport="stdio") 
+    print("Iniciando MCP WAHA-WhatsApp (stdio)…")
+    mcp.run(transport="stdio")
